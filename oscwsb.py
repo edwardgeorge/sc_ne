@@ -28,7 +28,9 @@ class Server(object):
 
     def setup_server(self, port):
         server = liblo.Server(port)
+        server.add_method(None, None, self.handle_osc)
         self.servers.append(server)
+        self._evt.send(None)
 
     def run(self):
         self._evt.wait()
@@ -37,13 +39,13 @@ class Server(object):
             for s in r:
                 s.recv(0)
 
-    def handle_websocket_msgt(self, msg):
+    def handle_websocket_msg(self, msg):
         path, args = simplejson.loads(msg)
         for a in self.clients:
             liblo.send(a, path, *args)
 
     def websocket_handler(self, ws):
-        self.connections.append(ws)
+        self.websockets.append(ws)
         try:
             while True:
                 msg = ws.wait()
