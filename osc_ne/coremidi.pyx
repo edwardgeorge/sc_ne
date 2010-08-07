@@ -157,16 +157,13 @@ cdef void callback(MIDIPacketList *pktlist, void *refCon, void *connRefCon):
     cdef MIDIPacket *packet = <MIDIPacket *>pktlist.packet
     cdef int i
 
-    cdef PyGILState_STATE gil
     for i in range(pktlist.numPackets):
-        gil = PyGILState_Ensure()
-        print 'unknown:', hex(packet.data[0])
-        PyGILState_Release(gil)
-
+        data = PyString_FromStringAndSize(<char*>packet.data, <int>packet.length)
+        callbacktopython(td.callback, data, <object>td.data)
         packet = MIDIPacketNext(packet)
 
-cdef void callbacktopython(void* callback, unsigned long clockpos, float bpm) with gil:
-    (<object>callback)(clockpos, bpm)
+cdef void callbacktopython(void* callback, object data, object userdata) with gil:
+    (<object>callback)(data, userdata)
 
 def go(object callbackfunc, object data):
     PyEval_InitThreads()
