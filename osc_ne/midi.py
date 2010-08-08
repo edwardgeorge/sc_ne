@@ -1,3 +1,4 @@
+import logging
 from osc_ne import miditools
 
 class NoMethodError(Exception):
@@ -34,8 +35,8 @@ class MidiHandler(object):
     def handle_channelmessage(self, mtyp, chan, bytes):
         handler_name = self.CHANNEL_VOICE_HANDLERS[mtyp]
         delegateto(self.delegate, [
-            ('handle_%s' % handler_name, [chan] + bytes, {}),
-            ('channel_fallback', [mtyp, handler_name, chan] + bytes, {})),
+            (handler_name, [chan] + bytes, {}),
+            ('channel_fallback', (mtyp, handler_name, chan, bytes), {})),
             ], raise_error=False)
 
     def handle_systemmessage(self, data):
@@ -77,4 +78,17 @@ class MidiHandler(object):
                     ('systemrealtime_fallback', (handler_name, data), {}),
                     ('system_fallback', (handler_name, data), {})]
         delegateto(self.delegate, handlers, raise_error=False)
+
+    # delegate methods
+    def sysex(self, data):
+        logger = logging.getLogger('osc_ne.midi.MidiHandler.sysex')
+        logger.info('received sysex: %r' % data)
+
+    def system_fallback(self, name, data):
+        logger = logging.getLogger('osc_ne.midi.MidiHandler.system_fallback')
+        logger.info('received system message %s: %r' % (name, data))
+
+    def channel_fallback(self, typ, name, channel, bytes):
+        logger = logging.getLogger('osc_ne.midi.MidiHandler.channel_fallback')
+        logger.info('received chanel voice message %s on channel %d: %r' % (name, channel, data))
 
