@@ -1,5 +1,21 @@
 from osc_ne import miditools
 
+class NoMethodError(Exception):
+    pass
+
+
+def delegateto(obj, methods, raise_error=True):
+    mlist = methods[:]
+    while mlist:
+        method, args, kwargs = mlist.pop(0)
+        try:
+            m = getattr(obj, method)
+        except AttributeError, e:
+            if not mlist and raise_error:
+                raise NoMethodError()
+        else:
+            return m(*args, **kwargs)
+
 class MidiHandler(object):
     from osc_ne.midispec import *
     def __init__(self, delegate):
@@ -17,13 +33,10 @@ class MidiHandler(object):
 
     def handle_channelmessage(self, mtyp, chan, bytes):
         handler_name = self.CHANNEL_VOICE_HANDLERS[mtyp]
-        try:
-            handler = getattr(self, handler_name)
-        except AttributeError, e:
-            # shld log here
-            pass
-        else:
-            return handler(chan, *bytes)
+        delegateto(self.delegate, [
+            ('handle_%s' % handler_name, [chan] + bytes, {}),
+            ('channel_fallback', [mtyp, handler_name, chan] + bytes, {})),
+            ], raise_error=False)
 
     def handle_systemmessage(self, data):
         handler_name = None
@@ -41,36 +54,27 @@ class MidiHandler(object):
             raise Exception()
 
     def handle_sysex(self, data):
-        pass
+        handlers = [('sysex', (data,), {})]
+        if data[0] == 0x7E:
+            # universal non-realtime
+            raise NotImplementedError()
+        elif data[0] == 0x7F:
+            # universal realtime
+            raise NotImplementedError()
+        else:
+            delegateto(self.delegate, handlers, raise_error=False)
 
     def handle_systemcommon(self, data):
-        handler_name = self.SYSTEM_COMMON_HANDLERS.get(data[0])
-        if handler_name:
-            try:
-                handler = getattr(self, handler_name)
-            except AttributeError, e:
-                # shld log here
-                pass
-            else:
-                return handler(data[1:])
+        handler_name = self.SYSTEM_COMMON_HANDLERS.get(data[0], 'SYSTEM_COMMON_UNDEFINED')
+        handlers = [(handler_name, (data,), {}),
+                    ('systemcommon_fallback', (handler_name, data), {}),
+                    ('system_fallback', (handler_name, data), {})]
+        delegateto(self.delegate, handlers, raise_error=False)
 
     def handle_systemrealtime(self, data):
-        handler_name = self.SYSTEM_REALTIME_HANDLERS.get(data[0])
-        if handler_name:
-            try:
-                handler = getattr(self, handler_name)
-            except AttributeError, e:
-                # shld log here
-                pass
-            else:
-                return handler(data[1:])
+        handler_name = self.SYSTEM_REALTIME_HANDLERS.get(data[0], 'SYSTEM_REALTIME_UNDEFINED')
+        handlers = [(handler_name, (data,), {}),
+                    ('systemrealtime_fallback', (handler_name, data), {}),
+                    ('system_fallback', (handler_name, data), {})]
+        delegateto(self.delegate, handlers, raise_error=False)
 
-    # fallbacks
-    def handle_channel_fallback(self, mtyp, type_name, chan, bytes):
-        pass
-
-    def handle_systemcommon_fallback(self, name, data):
-        pass
-
-    def handle_systemrealtime_fallback(self, name, data):
-        pass
