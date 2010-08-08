@@ -185,4 +185,3 @@ def go(object callbackfunc, object data):
         src = MIDIGetSource(i)
         print getproperty(src, kMIDIPropertyName)
         MIDIPortConnectSource(inport, src, NULL)
-
