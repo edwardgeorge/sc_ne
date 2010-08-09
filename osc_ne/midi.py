@@ -1,4 +1,5 @@
 import logging
+from osc_ne import midispec
 from osc_ne import miditools
 
 class NoMethodError(Exception):
@@ -18,8 +19,7 @@ def delegateto(obj, methods, raise_error=True):
             return m(*args, **kwargs)
 
 class MidiHandler(object):
-    from osc_ne.midispec import *
-    def __init__(self, delegate):
+    def __init__(self, delegate=None):
         self.delegate = delegate or self
 
     def handle_message(self, bytestr):
@@ -33,10 +33,10 @@ class MidiHandler(object):
             return ValueError()
 
     def handle_channelmessage(self, mtyp, chan, bytes):
-        handler_name = self.CHANNEL_VOICE_HANDLERS[mtyp]
+        handler_name = midispec.CHANNEL_VOICE_HANDLERS[mtyp]
         delegateto(self.delegate, [
             (handler_name, [chan] + bytes, {}),
-            ('channel_fallback', (mtyp, handler_name, chan, bytes), {})),
+            ('channel_fallback', (mtyp, handler_name, chan, bytes), {}),
             ], raise_error=False)
 
     def handle_systemmessage(self, data):
@@ -66,14 +66,14 @@ class MidiHandler(object):
             delegateto(self.delegate, handlers, raise_error=False)
 
     def handle_systemcommon(self, data):
-        handler_name = self.SYSTEM_COMMON_HANDLERS.get(data[0], 'SYSTEM_COMMON_UNDEFINED')
+        handler_name = midispec.SYSTEM_COMMON_HANDLERS.get(data[0], 'SYSTEM_COMMON_UNDEFINED')
         handlers = [(handler_name, (data,), {}),
                     ('systemcommon_fallback', (handler_name, data), {}),
                     ('system_fallback', (handler_name, data), {})]
         delegateto(self.delegate, handlers, raise_error=False)
 
     def handle_systemrealtime(self, data):
-        handler_name = self.SYSTEM_REALTIME_HANDLERS.get(data[0], 'SYSTEM_REALTIME_UNDEFINED')
+        handler_name = midispec.SYSTEM_REALTIME_HANDLERS.get(data[0], 'SYSTEM_REALTIME_UNDEFINED')
         handlers = [(handler_name, (data,), {}),
                     ('systemrealtime_fallback', (handler_name, data), {}),
                     ('system_fallback', (handler_name, data), {})]
