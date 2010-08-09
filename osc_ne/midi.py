@@ -32,12 +32,12 @@ class MidiHandler(object):
 
     @silence_unimplemented
     def handle_message(self, bytestr):
-        b = miditools.stringtobytes(bytestr)
-        if 0x80 <= b[0] <= 0xEF:
-            mtyp, chan = miditools.nibbles(b[0])
-            return self.handle_channelmessage(mtyp, chan, b[1:])
-        elif 0xF0 <= b[0] <= 0xFF:
-            return self.handle_systemmessage(b)
+        status = miditools.byte(bytestr[0])
+        if 0x80 <= status <= 0xEF:
+            mtyp, chan = miditools.nibbles(status)
+            return self.handle_channelmessage(mtyp, chan, bytestr[1:])
+        elif 0xF0 <= status <= 0xFF:
+            return self.handle_systemmessage(status, bytestr[1:])
         else:
             return ValueError()
 
@@ -53,26 +53,29 @@ class MidiHandler(object):
             (handler_name, chan, data),
             ('channel_voice', mtyp, handler_name, chan, data))
 
-    def handle_controlchange(self, chan, bytes):
-        cc, val = bytes
+    def handle_controlchange(self, chan, data):
+        cc, val = miditools.stringtobytes(data)
         cc_name = midispec.CONTROLLERS.get(cc)
         return self._call(
             (cc_name, chan, val),
             ('control_change', cc, cc_name, chan, val))
 
-    def handle_systemmessage(self, data):
-        handler_name = None
+    def handle_systemmessage(self, status, data):
         try:
-            if data[0] == 0xF0:
+            if status == 0xF0:
                 return self.handle_sysex(data)
-            elif 0xF1 <= data[0] <= 0xF7:
-                return self.handle_systemcommon(data)
-            elif 0xF7 <= data[0] <= 0xFF:
-                return self.handle_systemrealtime(data)
+            elif 0xF1 <= status <= 0xF7:
+                return self.handle_systemcommon(status, data)
+            elif 0xF7 <= status <= 0xFF:
+                return self.handle_systemrealtime(status, data)
         except NotImplementedError, e:
-            self._call(('system_message', data[0], data[1:]))
+            self._call(('system_message', status, data))
 
     def handle_sysex(self, data):
+        if data[-1] != '\xF7':
+            # aborted
+            return
+        data = data[:-1]
         handlers = [('sysex', (data,), {})]
         if data[0] == 0x7E:
             # universal non-realtime
@@ -84,19 +87,19 @@ class MidiHandler(object):
             return self._call(
                 ('sysex', data))
 
-    def handle_systemcommon(self, data):
-        handler_name = midispec.SYSTEM_COMMON_HANDLERS.get(data[0])
+    def handle_systemcommon(self, status, data):
+        handler_name = midispec.SYSTEM_COMMON_HANDLERS.get(status)
         return self._call(
-            (handler_name, data[1:]),
-            ('system_common', data[0], handler_name, data[1:]))
-            #('system_message', data[0], handler_name, data[1:]))
+            (handler_name, data),
+            ('system_common', status, handler_name, data))
+            #('system_message', status, handler_name, data))
 
-    def handle_systemrealtime(self, data):
-        handler_name = midispec.SYSTEM_REALTIME_HANDLERS.get(data[0])
+    def handle_systemrealtime(self, status, data):
+        handler_name = midispec.SYSTEM_REALTIME_HANDLERS.get(status)
         return self._call(
-            (handler_name, data[1:]),
-            ('system_realtime', data[0], handler_name, data[1:]))
-            #('system_message', data[0], handler_name, data[1:]))
+            (handler_name, data),
+            ('system_realtime', status, handler_name, data))
+            #('system_message', status, handler_name, data))
 
     # delegate methods
     def sysex(self, data):
