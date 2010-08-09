@@ -1,27 +1,36 @@
+import functools
 import logging
+
 from osc_ne import midispec
 from osc_ne import miditools
 
-class NoMethodError(Exception):
-    pass
-
-
-def delegateto(obj, methods, raise_error=True):
-    mlist = methods[:]
-    while mlist:
-        method, args, kwargs = mlist.pop(0)
+def silence_unimplemented(func):
+    @functools.wraps(func)
+    def decorated(*args, **kwargs):
         try:
-            m = getattr(obj, method)
-        except AttributeError, e:
-            if not mlist and raise_error:
-                raise NoMethodError()
-        else:
-            return m(*args, **kwargs)
+            return func(*args, **kwargs)
+        except NotImplementedError, e:
+            pass
+    return decorated
 
 class MidiHandler(object):
     def __init__(self, delegate=None):
         self.delegate = delegate or self
 
+    def _call(self, *methods):
+        for mdata in methods[:]:
+            method, args = mdata[0], mdata[1:]
+            if method is None:
+                continue
+            try:
+                m = getattr(self.delegate, method)
+            except AttributeError, e:
+                pass
+            else:
+                return m(*args)
+        raise NotImplementedError()
+
+    @silence_unimplemented
     def handle_message(self, bytestr):
         b = miditools.stringtobytes(bytestr)
         if 0x80 <= b[0] <= 0xEF:
@@ -32,27 +41,36 @@ class MidiHandler(object):
         else:
             return ValueError()
 
-    def handle_channelmessage(self, mtyp, chan, bytes):
+    def handle_channelmessage(self, mtyp, chan, data):
+        # should probably get controller name here for CC stuff
+        if mtyp == MIDI_CONTROLCHANGE:
+            try:
+                return self.handle_controlchange(chan, data)
+            except NotImplementedError, e:
+                pass
         handler_name = midispec.CHANNEL_VOICE_HANDLERS[mtyp]
-        delegateto(self.delegate, [
-            (handler_name, [chan] + bytes, {}),
-            ('channel_fallback', (mtyp, handler_name, chan, bytes), {}),
-            ], raise_error=False)
+        return self._call(
+            (handler_name, chan, data),
+            ('channel_voice', mtyp, handler_name, chan, data))
+
+    def handle_controlchange(self, chan, bytes):
+        cc, val = bytes
+        cc_name = midispec.CONTROLLERS.get(cc)
+        return self._call(
+            (cc_name, chan, val),
+            ('control_change', cc, cc_name, chan, val))
 
     def handle_systemmessage(self, data):
         handler_name = None
-        if data[0] == 0xF0:
-            # sysex message
-            return self.handle_sysex(data)
-        elif 0xF1 <= data[0] <= 0xF7:
-            # system common
-            return self.handle_systemcommon(data)
-        elif 0xF7 <= data[0] <= 0xFF:
-            # system realtime
-            return self.handle_systemrealtime(data)
-        else:
-            # should not happen
-            raise Exception()
+        try:
+            if data[0] == 0xF0:
+                return self.handle_sysex(data)
+            elif 0xF1 <= data[0] <= 0xF7:
+                return self.handle_systemcommon(data)
+            elif 0xF7 <= data[0] <= 0xFF:
+                return self.handle_systemrealtime(data)
+        except NotImplementedError, e:
+            self._call(('system_message', data[0], data[1:]))
 
     def handle_sysex(self, data):
         handlers = [('sysex', (data,), {})]
@@ -63,32 +81,37 @@ class MidiHandler(object):
             # universal realtime
             raise NotImplementedError()
         else:
-            delegateto(self.delegate, handlers, raise_error=False)
+            return self._call(
+                ('sysex', data))
 
     def handle_systemcommon(self, data):
-        handler_name = midispec.SYSTEM_COMMON_HANDLERS.get(data[0], 'SYSTEM_COMMON_UNDEFINED')
-        handlers = [(handler_name, (data,), {}),
-                    ('systemcommon_fallback', (handler_name, data), {}),
-                    ('system_fallback', (handler_name, data), {})]
-        delegateto(self.delegate, handlers, raise_error=False)
+        handler_name = midispec.SYSTEM_COMMON_HANDLERS.get(data[0])
+        return self._call(
+            (handler_name, data[1:]),
+            ('system_common', data[0], handler_name, data[1:]))
+            #('system_message', data[0], handler_name, data[1:]))
 
     def handle_systemrealtime(self, data):
-        handler_name = midispec.SYSTEM_REALTIME_HANDLERS.get(data[0], 'SYSTEM_REALTIME_UNDEFINED')
-        handlers = [(handler_name, (data,), {}),
-                    ('systemrealtime_fallback', (handler_name, data), {}),
-                    ('system_fallback', (handler_name, data), {})]
-        delegateto(self.delegate, handlers, raise_error=False)
+        handler_name = midispec.SYSTEM_REALTIME_HANDLERS.get(data[0])
+        return self._call(
+            (handler_name, data[1:]),
+            ('system_realtime', data[0], handler_name, data[1:]))
+            #('system_message', data[0], handler_name, data[1:]))
 
     # delegate methods
     def sysex(self, data):
         logger = logging.getLogger('osc_ne.midi.MidiHandler.sysex')
         logger.info('received sysex: %r' % data)
 
-    def system_fallback(self, name, data):
+    def system_message(self, name, data):
         logger = logging.getLogger('osc_ne.midi.MidiHandler.system_fallback')
         logger.info('received system message %s: %r' % (name, data))
 
-    def channel_fallback(self, typ, name, channel, bytes):
+    def channel_voice(self, typ, name, channel, bytes):
         logger = logging.getLogger('osc_ne.midi.MidiHandler.channel_fallback')
         logger.info('received chanel voice message %s on channel %d: %r' % (name, channel, data))
 
+    def control_change(self, cc, name, channel, val):
+        logger = logging.getLogger('osc_ne.midi.MidiHandler.control_change')
+        logger.info('received cc message %s %r on channel %s: %s' %
+            (cc, name, channel, val))
