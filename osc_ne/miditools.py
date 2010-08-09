@@ -38,6 +38,10 @@ def byte14(b1, b2):
     b1, b2 = byte(b1), byte(b2)
     return (b1 & 63) | ((b2 & 63) << 7)
 
+def byte14i(b):
+    """decodes 14bit integer from 16bit integer."""
+    return byte14(b >> 8 & 127, b & 127)
+
 def nibbles(b):
     """returns the high, low nibbles from a byte."""
     b = byte(b)
