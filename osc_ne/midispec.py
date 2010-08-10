@@ -7,12 +7,12 @@ MIDI_CHANNELPRESSURE = 0x0D
 MIDI_PITCHWHEEL = 0x0E
 
 CHANNEL_VOICE_HANDLERS = {
-    MIDI_NOTE_OFF: ('NOTE_OFF', '>2B')
-    MIDI_NOTE_ON: ('NOTE_ON', '>2B')
-    MIDI_AFTERTOUCH: ('AFTERTOUCH', '>2B')
-    MIDI_CONTROLCHANGE: ('CC', '>2B')
-    MIDI_PROGRAMCHANGE: ('PROGRAM', '>B')
-    MIDI_PITCHWHEEL: ('PITCH_WHEEL', '>H')
+    MIDI_NOTE_OFF: ('NOTE_OFF', '>2B'),
+    MIDI_NOTE_ON: ('NOTE_ON', '>2B'),
+    MIDI_AFTERTOUCH: ('AFTERTOUCH', '>2B'),
+    MIDI_CONTROLCHANGE: ('CC', '>2B'),
+    MIDI_PROGRAMCHANGE: ('PROGRAM', '>B'),
+    MIDI_PITCHWHEEL: ('PITCH_WHEEL', '>H'),
 }
 CONTROLLERS = {
     # MSBs
@@ -126,23 +126,23 @@ REGISTERED_PARAMETER_NUMBERS = {
 }
 SYSTEM_COMMON_HANDLERS = {
     # 0xF0 SYSTEM EXCLUSIVE. handled internally.
-    0xF1: 'MTC_QUARTER_FRAME',
-    0xF2: 'SONG_POSITION',
-    0xF3: 'SONG_SELECT',
+    0xF1: ('MTC_QUARTER_FRAME', '>B'),
+    0xF2: ('SONG_POSITION', '>H'),
+    0xF3: ('SONG_SELECT', '>B'),
     # 0xF4 undefined
     # 0xF5 undefined
-    0xF6: 'TUNE_REQUEST',
+    0xF6: ('TUNE_REQUEST', ''),
     # 0xF7
 }
 SYSTEM_REALTIME_HANDLERS = {
-    0xF8: 'MIDI_CLOCK',
-    0xF9: 'MIDI_TICK',
-    0xFA: 'MIDI_START',
-    0xFB: 'MIDI_CONTINUE',
-    0xFC: 'MIDI_STOP',
+    0xF8: ('MIDI_CLOCK', ''),
+    0xF9: ('MIDI_TICK', ''),
+    0xFA: ('MIDI_START', ''),
+    0xFB: ('MIDI_CONTINUE', ''),
+    0xFC: ('MIDI_STOP', ''),
     # 0xFD undefined
-    0xFE: 'ACTIVE_SENSE',
-    0xFF: 'RESET',
+    0xFE: ('ACTIVE_SENSE', ''),
+    0xFF: ('RESET', ''),
 }
 # 0x7E non-realtime, 0x7F realtime
 # from http://www.midi.org/techspecs/midimessages.php

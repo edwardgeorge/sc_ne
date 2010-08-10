@@ -95,17 +95,21 @@ class MidiHandler(object):
                 ('sysex', data))
 
     def handle_systemcommon(self, status, data):
-        handler_name = midispec.SYSTEM_COMMON_HANDLERS.get(status)
+        handler_name, fmt = midispec.SYSTEM_COMMON_HANDLERS.get(status,
+            (None, None))
+        msgdata = miditools.unpack(fmt, data)
         return self._call(
-            (handler_name, data),
-            ('system_common', status, handler_name, data))
+            l(handler_name, *msgdata),
+            l('system_common', status, handler_name, *msgdata))
             #('system_message', status, handler_name, data))
 
     def handle_systemrealtime(self, status, data):
-        handler_name = midispec.SYSTEM_REALTIME_HANDLERS.get(status)
+        handler_name, fmt = midispec.SYSTEM_REALTIME_HANDLERS.get(status,
+            (None, None))
+        msgdata = miditools.unpack(fmt, data)
         return self._call(
-            (handler_name, data),
-            ('system_realtime', status, handler_name, data))
+            l(handler_name, *msgdata),
+            l('system_realtime', status, handler_name, *msgdata))
             #('system_message', status, handler_name, data))
 
     # delegate methods

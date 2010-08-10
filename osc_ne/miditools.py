@@ -63,10 +63,10 @@ def _iterfmt(res):
         elif v == 's':
             yield v
         else:
-            for i in range(c or 1):
+            for i in range(int(c) if c else 1):
                 yield v
 
-def _checkvals((val, fmt)):
+def _checkvals(val, fmt):
     if isinstance(val, int):
         size = struct.calcsize('>' + fmt)
         if size > 1:
@@ -78,12 +78,15 @@ def _checkvals((val, fmt)):
     return val
 
 def unpack(fmt, string):
-    if fmt[0] in ('@', '<', '>', '!', '='):
+    # special case: if fmt is None just return string
+    if fmt is None:
+        return [string]
+    if fmt and fmt[0] in ('@', '<', '>', '!', '='):
         if fmt[0] != '>':
             raise ValueError('unsupported byte ordering')
         fmt = fmt[1:]
     regex = re.compile('([0-9]+)?([xcbB?hHiIlLqQfdsp]{1})')
-    filtered = list(_iterfmt(regex.findall(string)))
+    filtered = list(_iterfmt(regex.findall(fmt)))
     results = struct.unpack('>' + fmt, string)
     assert len(filtered) == len(results), 'something terrible happened!'
     return map(_checkvals, results, filtered)
