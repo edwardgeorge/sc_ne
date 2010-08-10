@@ -1,5 +1,4 @@
-from distutils.core import setup
-from distutils.extension import Extension
+from setuptools import setup, Extension
 from Cython.Distutils import build_ext
 
 setup(
@@ -11,5 +10,6 @@ setup(
             '-framework', 'CoreFoundation',
             '-framework', 'CoreMIDI'
     ]),],
-    cmdclass = {'build_ext': build_ext}
+    cmdclass = {'build_ext': build_ext},
+    test_suite='nose.collector',
 )

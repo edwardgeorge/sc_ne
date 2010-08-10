@@ -1,3 +1,9 @@
+import re
+import struct
+
+__all__ = ['note', 'byte', 'note_to_frequency', 'stringtobytes', 'byte14',
+    'byte14i', 'nibbles', 'unpack']
+
 NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 NOTE_0 = (0, -1) # Note 60 is Middle C (4), so 0 is C-1
 
@@ -47,9 +53,38 @@ def nibbles(b):
     b = byte(b)
     return (b & 240) >> 4, b & 15
 
+# utility funcs for unpack
+def _iterfmt(res):
+    for c, v in res:
+        if v == 'x':
+            continue
+        elif c == 0 and v != 's':
+            continue
+        elif v == 's':
+            yield v
+        else:
+            for i in range(c or 1):
+                yield v
+
+def _checkvals((val, fmt)):
+    if isinstance(val, int):
+        size = struct.calcsize('>' + fmt)
+        if size > 1:
+            tmp = 0
+            for i in range(size):
+                tmp = (tmp << 7) | (val & 127)
+                val = val >> 8
+            val = tmp
+    return val
+
 def unpack(fmt, string):
-    """TODO
+    if fmt[0] in ('@', '<', '>', '!', '='):
+        if fmt[0] != '>':
+            raise ValueError('unsupported byte ordering')
+        fmt = fmt[1:]
+    regex = re.compile('([0-9]+)?([xcbB?hHiIlLqQfdsp]{1})')
+    filtered = list(_iterfmt(regex.findall(string)))
+    results = struct.unpack('>'+fmt, string)
+    assert len(filtered) == len(results), 'something terrible happened!'
+    return map(_checkvals, results, filtered)
 
-    like struct.unpack but handles 14bit encoded values.
-
-    """
