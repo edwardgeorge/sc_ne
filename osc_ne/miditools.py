@@ -5,7 +5,7 @@ __all__ = ['note', 'byte', 'note_to_frequency', 'stringtobytes', 'byte14',
     'byte14i', 'nibbles', 'unpack']
 
 NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-NOTE_0 = (0, -1) # Note 60 is Middle C (4), so 0 is C-1
+NOTE_0 = (0, -1)  # Note 60 is Middle C (4), so 0 is C-1
 
 
 def note(b):
@@ -33,8 +33,8 @@ def byte(b):
 
 def note_to_frequency(note, a_tuning=440):
     """Converts midi note (integer) to a frequency value in Hz."""
-    note = note - 69 # A above middle C = 0. note(69) = ('A', 5)
-    return (a_tuning * 2.0 ** (note/12.0))
+    note = note - 69  # A above middle C = 0. note(69) = ('A', 5)
+    return (a_tuning * 2.0 ** (note / 12.0))
 
 def stringtobytes(s):
     return map(byte, s)
@@ -84,7 +84,7 @@ def unpack(fmt, string):
         fmt = fmt[1:]
     regex = re.compile('([0-9]+)?([xcbB?hHiIlLqQfdsp]{1})')
     filtered = list(_iterfmt(regex.findall(string)))
-    results = struct.unpack('>'+fmt, string)
+    results = struct.unpack('>' + fmt, string)
     assert len(filtered) == len(results), 'something terrible happened!'
     return map(_checkvals, results, filtered)
 

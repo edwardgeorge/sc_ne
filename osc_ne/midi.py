@@ -4,8 +4,10 @@ import logging
 from osc_ne import midispec
 from osc_ne import miditools
 
+
 def l(*args):
     return list(args)
+
 
 def silence_unimplemented(func):
     @functools.wraps(func)
@@ -15,6 +17,7 @@ def silence_unimplemented(func):
         except NotImplementedError, e:
             pass
     return decorated
+
 
 class MidiHandler(object):
     def __init__(self, delegate=None):
@@ -116,7 +119,8 @@ class MidiHandler(object):
 
     def channel_voice(self, typ, name, channel, *data):
         logger = logging.getLogger('osc_ne.midi.MidiHandler.channel_fallback')
-        logger.info('received chanel voice message %s on channel %d: %r' % (name, channel, data))
+        logger.info('received chanel voice message %s on channel %d: %r' % (
+            name, channel, data))
 
     def control_change(self, cc, name, channel, val):
         logger = logging.getLogger('osc_ne.midi.MidiHandler.control_change')
