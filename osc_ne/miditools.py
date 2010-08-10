@@ -33,16 +33,23 @@ def note_to_frequency(note, a_tuning=440):
 def stringtobytes(s):
     return map(byte, s)
 
-def byte14(b1, b2):
+def byte14(lsb, msb):
     """decodes the 14bit integer value from two bytes."""
-    b1, b2 = byte(b1), byte(b2)
-    return (b1 & 63) | ((b2 & 63) << 7)
+    lsb, msb = byte(lsb), byte(msb)
+    return (lsb & 127) | ((msb & 127) << 7)
 
 def byte14i(b):
-    """decodes 14bit integer from 16bit integer."""
-    return byte14(b >> 8 & 127, b & 127)
+    """decodes 14bit integer from 16bit integer. significant bits inverted"""
+    return byte14(b & 127, b >> 8 & 127)
 
 def nibbles(b):
     """returns the high, low nibbles from a byte."""
     b = byte(b)
     return (b & 240) >> 4, b & 15
+
+def unpack(fmt, string):
+    """TODO
+
+    like struct.unpack but handles 14bit encoded values.
+
+    """
